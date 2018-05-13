@@ -13,6 +13,9 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.RotateAnimation;
+import android.view.animation.TranslateAnimation;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -162,7 +165,7 @@ public class WeatherActivity extends AppCompatActivity {
             return;
         }
         String weatherInfo = weather.now.more.info;
-        int sunny = R.drawable.sunny;
+        /*int sunny = R.drawable.sunny;
         int cloudy = R.drawable.cloudy;
         int rain = R.drawable.rain;
         int snow = R.drawable.snow;
@@ -195,7 +198,9 @@ public class WeatherActivity extends AppCompatActivity {
                     .into(bingPicImg);
         } else {
             loadBingPic();
-        }
+        }*/
+
+        changeBackground(weatherInfo);
     }
 
     //该方法调用了loadBingPic()方法来加载背景图片
@@ -289,5 +294,83 @@ public class WeatherActivity extends AppCompatActivity {
 
         Intent intent = new Intent(this, AutoUpdateService.class);
         startService(intent);
+    }
+
+    private void changeBackground(String weatherInfo) {
+        ImageView backgroundView = (ImageView) findViewById(R.id.bing_pic_img);
+        ImageView moveView1 = (ImageView) findViewById(R.id.move_iv1);
+        ImageView moveView2 = (ImageView) findViewById(R.id.move_iv2);
+        SnowView snowView = findViewById(R.id.snow_view);
+        RainView rainView = findViewById(R.id.rain_view);
+        final Map<String, Integer> map = new HashMap<> ();
+        map.put("晴",0);
+        map.put("大风",0);
+        map.put("多云",1);
+        map.put("少云",1);
+        map.put("晴间多云",1);
+        map.put("阴",2);
+        map.put("雾",2);
+        map.put("霾",2);
+        map.put("小雨",3);
+        map.put("阵雨",3);
+        map.put("雷阵雨",3);
+        map.put("中雨",3);
+        map.put("大雨",3);
+        map.put("暴雨",3);
+        map.put("小雪",4);
+        map.put("中雪",4);
+        map.put("大雪",4);
+
+        RotateAnimation rAnimation = new RotateAnimation(0, 30, 0, 0);
+        rAnimation.setDuration(3000);
+        rAnimation.setRepeatMode(Animation.REVERSE);
+        rAnimation.setRepeatCount(Integer.MAX_VALUE);
+
+        TranslateAnimation tAnimation1 = new TranslateAnimation(-100f, 300f, -400f, -400f);
+        tAnimation1.setDuration(8000);
+        tAnimation1.setRepeatMode(Animation.REVERSE);
+        tAnimation1.setRepeatCount(Integer.MAX_VALUE);
+
+        TranslateAnimation tAnimation2 = new TranslateAnimation(200f, -300f, -200f, -300f);
+        tAnimation2.setDuration(10000);
+        tAnimation2.setRepeatMode(Animation.REVERSE);
+        tAnimation2.setRepeatCount(Integer.MAX_VALUE);
+
+        switch (map.get(weatherInfo)) {
+            case 0:
+                Glide.with(this).load(R.drawable.bg0_fine_day).into(backgroundView);
+                moveView1.setImageResource(R.drawable.light);
+                moveView1.setAnimation(rAnimation);
+                moveView1.startAnimation(rAnimation);
+                moveView2.setVisibility(View.INVISIBLE);
+                break;
+            case 1 :
+                Glide.with(this).load(R.drawable.cloudy).into(backgroundView);
+                moveView1.setImageResource(R.drawable.fine_day_cloud1);
+                moveView2.setImageResource(R.drawable.fine_day_cloud2);
+                moveView1.startAnimation(tAnimation1);
+                moveView2.startAnimation(tAnimation2);
+                break;
+            case 2 :
+                Glide.with(this).load(R.drawable.bg_fog_and_haze).into(backgroundView);
+                moveView1.setImageResource(R.drawable.fine_day_cloud1);
+                moveView2.setImageResource(R.drawable.fine_day_cloud2);
+                moveView1.startAnimation(tAnimation1);
+                moveView2.startAnimation(tAnimation2);
+                break;
+            case 3 :
+                Glide.with(this).load(R.drawable.bg_heavy_rain_night).into(backgroundView);
+                rainView.setVisibility(View.VISIBLE);
+                snowView.setVisibility(View.INVISIBLE);
+                break;
+            case 4 :
+                Glide.with(this).load(R.drawable.bg_heavy_rain_night).into(backgroundView);
+                snowView.setVisibility(View.VISIBLE);
+                rainView.setVisibility(View.INVISIBLE);
+                break;
+            default:
+                loadBingPic();
+        }
+
     }
 }
