@@ -150,7 +150,7 @@ public class MainActivity extends AppCompatActivity {
 
                 final String responseText = response.body().string();
                 final Weather weather = Utility.handleWeather5Response(responseText);
-                System.out.println(responseText);
+//                System.out.println(responseText);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {

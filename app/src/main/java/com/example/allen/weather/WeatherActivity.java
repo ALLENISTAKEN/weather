@@ -31,9 +31,20 @@ import com.example.allen.weather.util.HttpUtil;
 import com.example.allen.weather.util.Utility;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import lecho.lib.hellocharts.listener.LineChartOnValueSelectListener;
+import lecho.lib.hellocharts.model.Axis;
+import lecho.lib.hellocharts.model.Line;
+import lecho.lib.hellocharts.model.LineChartData;
+import lecho.lib.hellocharts.model.PointValue;
+import lecho.lib.hellocharts.view.LineChartView;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
@@ -58,6 +69,17 @@ public class WeatherActivity extends AppCompatActivity {
     private Button navButton;
     private Weather weather;
     private static final String TAG = "WeatherActivity";
+    private LineChartView chartView;
+    private LineChartOnValueSelectListener lineChartOnValueSelectListener = new LineChartOnValueSelectListener() {
+        @Override
+        public void onValueSelected(int lineIndex, int pointIndex, PointValue value) {
+            Toast.makeText(WeatherActivity.this, "温度：" + value.getY() + "℃", Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        public void onValueDeselected() {
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -88,6 +110,8 @@ public class WeatherActivity extends AppCompatActivity {
         swipeRefresh.setColorSchemeResources(R.color.colorPrimary);
         drawerLayout = findViewById(R.id.drawer_layout);
         navButton = findViewById(R.id.nav_button);
+        chartView = findViewById(R.id.chartView);
+
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         String weatherString = prefs.getString("weather", null);
@@ -104,6 +128,8 @@ public class WeatherActivity extends AppCompatActivity {
             weatherLayout.setVisibility(View.VISIBLE);
             requestWeather(weatherId);
         }
+
+
         //加载必应背景图片
 //        String bingPic = prefs.getString("bing_pic", null);
 //        if (bingPic != null) {
@@ -111,21 +137,29 @@ public class WeatherActivity extends AppCompatActivity {
 //        } else {
 //            loadBingPic();
 //        }
+
+        //加载背景图片
         loadWeatherPic();
+        //数据初始化图表
+        addData2ChartView();
+
         //下拉刷新天气信息
         swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
 //                requestWeather(weatherId);
                 requestWeather(weather.basic.weatherId);
+                addData2ChartView();
             }
         });
+
         navButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 drawerLayout.openDrawer(GravityCompat.START);
             }
         });
+
     }
 
     private void loadBingPic() {
@@ -157,6 +191,7 @@ public class WeatherActivity extends AppCompatActivity {
             }
         });
     }
+
     //加载本地的天气壁纸
     private void loadWeatherPic() {
 
@@ -165,40 +200,41 @@ public class WeatherActivity extends AppCompatActivity {
             return;
         }
         String weatherInfo = weather.now.more.info;
-        /*int sunny = R.drawable.sunny;
-        int cloudy = R.drawable.cloudy;
-        int rain = R.drawable.rain;
-        int snow = R.drawable.snow;
-        int overcast = R.drawable.overcast;
-        int foggy = R.drawable.foggy;
-        int haze = R.drawable.foggy;
 
-        final Map<String, Integer> map = new HashMap<> ();
-        map.put("晴",sunny);
-        map.put("大风",sunny);
-        map.put("多云",cloudy);
-        map.put("少云",cloudy);
-        map.put("晴间多云",cloudy);
-        map.put("阴",overcast);
-        map.put("小雨",rain);
-        map.put("阵雨",rain);
-        map.put("雷阵雨",rain);
-        map.put("中雨",rain);
-        map.put("大雨",rain);
-        map.put("暴雨",rain);
-        map.put("小雪",snow);
-        map.put("中雪",snow);
-        map.put("大雪",snow);
-        map.put("雾",foggy);
-        map.put("霾",haze);
-
-        Object pic = map.get(weatherInfo);
-        if (pic != null) {
-            Glide.with(WeatherActivity.this).load(pic)
-                    .into(bingPicImg);
-        } else {
-            loadBingPic();
-        }*/
+//        int sunny = R.drawable.sunny;
+//        int cloudy = R.drawable.cloudy;
+//        int rain = R.drawable.rain;
+//        int snow = R.drawable.snow;
+//        int overcast = R.drawable.overcast;
+//        int foggy = R.drawable.foggy;
+//        int haze = R.drawable.foggy;
+//
+//        final Map<String, Integer> map = new HashMap<> ();
+//        map.put("晴",sunny);
+//        map.put("大风",sunny);
+//        map.put("多云",cloudy);
+//        map.put("少云",cloudy);
+//        map.put("晴间多云",cloudy);
+//        map.put("阴",overcast);
+//        map.put("小雨",rain);
+//        map.put("阵雨",rain);
+//        map.put("雷阵雨",rain);
+//        map.put("中雨",rain);
+//        map.put("大雨",rain);
+//        map.put("暴雨",rain);
+//        map.put("小雪",snow);
+//        map.put("中雪",snow);
+//        map.put("大雪",snow);
+//        map.put("雾",foggy);
+//        map.put("霾",haze);
+//
+//        Object pic = map.get(weatherInfo);
+//        if (pic != null) {
+//            Glide.with(WeatherActivity.this).load(pic)
+//                    .into(bingPicImg);
+//        } else {
+//            loadBingPic();
+//        }
 
         changeBackground(weatherInfo);
     }
@@ -373,4 +409,49 @@ public class WeatherActivity extends AppCompatActivity {
         }
 
     }
+
+    /**
+     * 初始化数据到chart view中
+     */
+    private void addData2ChartView() {
+        Weather weather = this.weather;
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        Calendar calendar = Calendar.getInstance();
+        List<PointValue> maxValues = new ArrayList<>();
+        List<PointValue> minValues = new ArrayList<>();
+        try {
+            for (Forecast forecast : weather.forecastList) {
+                calendar.setTime(sdf.parse(forecast.date));
+                int day = calendar.get(Calendar.DAY_OF_MONTH);
+                int max = Integer.parseInt(forecast.temperature.max);
+                int min = Integer.parseInt(forecast.temperature.min);
+                maxValues.add(new PointValue(day, max));
+                minValues.add(new PointValue(day, min));
+            }
+        } catch (ParseException e) {
+            e.printStackTrace();
+        }
+
+        Line maxLine = new Line(maxValues).setColor(Color.RED).setCubic(false);
+        Line minLine = new Line(minValues).setColor(Color.BLUE).setCubic(false);
+        List<Line> lines = new ArrayList<>();
+        lines.add(maxLine);
+        lines.add(minLine);
+        LineChartData data = new LineChartData();
+        data.setLines(lines);
+        Axis axisX = new Axis();
+        //setHasLines(true),设定是否有网格线
+        Axis axisY = new Axis().setHasLines(false);
+        //为两个坐标系设定名称
+        axisX.setName("日期");
+        axisY.setName("温度");
+        //设置图标所在位置
+        data.setAxisXBottom(axisX);
+        data.setAxisYLeft(axisY);
+        //将数据添加到View中
+        chartView.setLineChartData(data);
+        chartView.setOnValueTouchListener(lineChartOnValueSelectListener);
+        chartView.setInteractive(true);
+    }
+
 }

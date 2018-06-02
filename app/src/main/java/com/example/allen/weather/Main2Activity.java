@@ -3,6 +3,7 @@ package com.example.allen.weather;
 import android.Manifest;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.preference.PreferenceManager;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -25,6 +26,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import lecho.lib.hellocharts.listener.LineChartOnValueSelectListener;
+import lecho.lib.hellocharts.model.Axis;
+import lecho.lib.hellocharts.model.Line;
+import lecho.lib.hellocharts.model.LineChartData;
+import lecho.lib.hellocharts.model.PointValue;
+import lecho.lib.hellocharts.view.LineChartView;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.Response;
@@ -33,14 +40,19 @@ public class Main2Activity extends AppCompatActivity {
 
     public LocationClient mLocationClient;
     private TextView positionView;
+    private LineChartView chartView;
+    private TextView textView;
     private static final String TAG = "Main2Activity";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main2);
+        chartView = findViewById(R.id.chartView11);
+        initData2Chart();
         mLocationClient = new LocationClient(getApplicationContext());
         mLocationClient.registerLocationListener(new MyLocationListener());
-        setContentView(R.layout.activity_main2);
+
         positionView = findViewById(R.id.position_text_view);
 
         List<String> permissionList = new ArrayList<>();
@@ -131,7 +143,7 @@ public class Main2Activity extends AppCompatActivity {
                 currentPosition.append("网络\n");
             }
             positionView.setText(currentPosition);
-            requestWeather(bdLocation.getLongitude(), bdLocation.getLatitude());
+//            requestWeather(bdLocation.getLongitude(), bdLocation.getLatitude());
         }
     }
 
@@ -158,7 +170,7 @@ public class Main2Activity extends AppCompatActivity {
 
                 final String responseText = response.body().string();
                 final Weather weather = Utility.handleWeather5Response(responseText);
-                System.out.println(responseText);
+//                System.out.println(responseText);
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -178,4 +190,51 @@ public class Main2Activity extends AppCompatActivity {
         });
 
     }
+
+    /**
+     * 初始化数据到chart中
+     */
+    private void initData2Chart() {
+        chartView.setOnValueTouchListener(listener);
+        /**
+         * 简单模拟的数据
+         */
+        List<PointValue> values = new ArrayList<>();
+        values.add(new PointValue(0, 3));
+        values.add(new PointValue(1, 1));
+        values.add(new PointValue(2, 4));
+        values.add(new PointValue(3, 0));
+        //setCubic(true),true是曲线型，false是直线连接
+        Line line = new Line(values).setColor(Color.BLUE).setCubic(true);
+        List<Line> lines = new ArrayList<>();
+        lines.add(line);
+        LineChartData data = new LineChartData();
+        data.setLines(lines);
+        Axis axisX = new Axis();
+        //setHasLines(true),设定是否有网格线
+        Axis axisY = new Axis().setHasLines(false);
+        //为两个坐标系设定名称
+        axisX.setName("Axis X");
+        axisY.setName("Axis Y");
+        //设置图标所在位置
+        data.setAxisXBottom(axisX);
+        data.setAxisYLeft(axisY);
+        //将数据添加到View中
+        chartView.setLineChartData(data);
+    }
+
+    /**
+     * 为每个点设置监听
+     */
+    private LineChartOnValueSelectListener listener = new LineChartOnValueSelectListener() {
+        @Override
+        public void onValueSelected(int lineIndex, int pointIndex, PointValue value) {
+            Toast.makeText(Main2Activity.this, "value" + value, Toast.LENGTH_SHORT).show();
+        }
+
+        @Override
+        public void onValueDeselected() {
+        }
+    };
 }
+

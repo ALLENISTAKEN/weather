@@ -60,6 +60,8 @@
 
                     <include layout="@layout/forecast" />
 
+                    <include layout="@layout/chartview_temperature" />
+
                     <include layout="@layout/api" />
 
                     <include layout="@layout/suggestion" />
