@@ -35,7 +35,7 @@ public class RainView extends View {
 
     protected void resize(int width, int height) {
         Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        paint.setColor(Color.GRAY);
+        paint.setColor(Color.WHITE);
         paint.setStyle(Paint.Style.FILL);
         raindrops = new Raindrop[NUM_RAINDROPS];
         for (int i = 0; i < NUM_RAINDROPS; i++) {

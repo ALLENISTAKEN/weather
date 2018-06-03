@@ -1,5 +1,6 @@
 package com.example.allen.weather;
 
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -8,6 +9,7 @@ import android.preference.PreferenceManager;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v4.widget.SwipeRefreshLayout;
+import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -16,19 +18,24 @@ import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.RotateAnimation;
 import android.view.animation.TranslateAnimation;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ListAdapter;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
+import com.example.allen.weather.db.County;
 import com.example.allen.weather.gson.Forecast;
 import com.example.allen.weather.gson.Weather;
 import com.example.allen.weather.service.AutoUpdateService;
 import com.example.allen.weather.util.HttpUtil;
 import com.example.allen.weather.util.Utility;
+
+import org.litepal.crud.DataSupport;
 
 import java.io.IOException;
 import java.text.ParseException;
@@ -62,6 +69,15 @@ public class WeatherActivity extends AppCompatActivity {
     private TextView comfortText;
     private TextView cardWashText;
     private TextView sportText;
+
+    private ImageView backgroundView ;
+    private ImageView moveView1 ;
+    private ImageView moveView2;
+    private SnowView snowView ;
+    private RainView rainView ;
+    private RotateAnimation rAnimation;
+    private TranslateAnimation tAnimation1;
+    private TranslateAnimation tAnimation2;
 
     private ImageView bingPicImg;
     public SwipeRefreshLayout swipeRefresh;
@@ -112,6 +128,15 @@ public class WeatherActivity extends AppCompatActivity {
         navButton = findViewById(R.id.nav_button);
         chartView = findViewById(R.id.chartView);
 
+        backgroundView = (ImageView) findViewById(R.id.bing_pic_img);
+        moveView1 = (ImageView) findViewById(R.id.move_iv1);
+        moveView2 = (ImageView) findViewById(R.id.move_iv2);
+        snowView = findViewById(R.id.snow_view);
+        rainView = findViewById(R.id.rain_view);
+        rAnimation = new RotateAnimation(0, 30, 0, 0);
+        tAnimation1 = new TranslateAnimation(-100f, 300f, -400f, -400f);
+        tAnimation2 = new TranslateAnimation(200f, -300f, -200f, -300f);
+
 
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
         String weatherString = prefs.getString("weather", null);
@@ -138,18 +163,12 @@ public class WeatherActivity extends AppCompatActivity {
 //            loadBingPic();
 //        }
 
-        //加载背景图片
-        loadWeatherPic();
-        //数据初始化图表
-        addData2ChartView();
-
         //下拉刷新天气信息
         swipeRefresh.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
             public void onRefresh() {
 //                requestWeather(weatherId);
                 requestWeather(weather.basic.weatherId);
-                addData2ChartView();
             }
         });
 
@@ -160,6 +179,45 @@ public class WeatherActivity extends AppCompatActivity {
             }
         });
 
+        titleCity.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final List<County> countyList = DataSupport.where("isAdded = ?", "1").find(County.class);
+                final ArrayList<String> names = new ArrayList<>();
+                for (County county : countyList) {
+                    names.add(county.getCountyName());
+                }
+                ArrayAdapter<String> adapter =
+                        new ArrayAdapter<>(WeatherActivity.this, android.R.layout.simple_list_item_1, names);
+
+                AlertDialog.Builder builder =
+                        new AlertDialog.Builder(WeatherActivity.this, R.style.Theme_AppCompat_DayNight_Dialog);
+
+                builder.setTitle("我的城市")
+                        .setAdapter(adapter, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.dismiss();
+                                Toast.makeText(WeatherActivity.this, names.get(which),
+                                        Toast.LENGTH_SHORT).show();
+                                requestWeather(countyList.get(which).getWeatherId());
+                            }
+                        });
+
+                builder.setPositiveButton("重置", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        County county = new County();
+                        county.setToDefault("isAdded");
+                        county.updateAll("isAdded = ?", "1");
+//                        Toast.makeText(WeatherActivity.this, "确定", Toast.LENGTH_SHORT)
+//                                .show();
+                    }
+                });
+                builder.create().show();
+            }
+        });
     }
 
     private void loadBingPic() {
@@ -196,7 +254,7 @@ public class WeatherActivity extends AppCompatActivity {
     private void loadWeatherPic() {
 
         if (weather == null) {
-            loadBingPic();
+//            loadBingPic();
             return;
         }
         String weatherInfo = weather.now.more.info;
@@ -236,7 +294,7 @@ public class WeatherActivity extends AppCompatActivity {
 //            loadBingPic();
 //        }
 
-        changeBackground(weatherInfo);
+//        changeBackground(weatherInfo);
     }
 
     //该方法调用了loadBingPic()方法来加载背景图片
@@ -286,8 +344,6 @@ public class WeatherActivity extends AppCompatActivity {
             }
         });
 
-//        loadBingPic();
-        loadWeatherPic();
     }
 
     private void showWeatherInfo(Weather weather) {
@@ -328,16 +384,24 @@ public class WeatherActivity extends AppCompatActivity {
         sportText.setText(sport);
         weatherLayout.setVisibility(View.VISIBLE);
 
+        addData2ChartView();
+        changeBackground();
+
         Intent intent = new Intent(this, AutoUpdateService.class);
         startService(intent);
     }
 
-    private void changeBackground(String weatherInfo) {
-        ImageView backgroundView = (ImageView) findViewById(R.id.bing_pic_img);
-        ImageView moveView1 = (ImageView) findViewById(R.id.move_iv1);
-        ImageView moveView2 = (ImageView) findViewById(R.id.move_iv2);
-        SnowView snowView = findViewById(R.id.snow_view);
-        RainView rainView = findViewById(R.id.rain_view);
+    private void changeBackground() {
+        String weatherInfo = weather.now.more.info;
+//        ImageView backgroundView = (ImageView) findViewById(R.id.bing_pic_img);
+//        ImageView moveView1 = (ImageView) findViewById(R.id.move_iv1);
+//        ImageView moveView2 = (ImageView) findViewById(R.id.move_iv2);
+//        SnowView snowView = findViewById(R.id.snow_view);
+//        RainView rainView = findViewById(R.id.rain_view);
+//        RotateAnimation rAnimation = new RotateAnimation(0, 30, 0, 0);
+//        TranslateAnimation tAnimation1 = new TranslateAnimation(-100f, 300f, -400f, -400f);
+//        TranslateAnimation tAnimation2 = new TranslateAnimation(200f, -300f, -200f, -300f);
+
         final Map<String, Integer> map = new HashMap<> ();
         map.put("晴",0);
         map.put("大风",0);
@@ -357,18 +421,15 @@ public class WeatherActivity extends AppCompatActivity {
         map.put("中雪",4);
         map.put("大雪",4);
 
-        RotateAnimation rAnimation = new RotateAnimation(0, 30, 0, 0);
         rAnimation.setDuration(3000);
         rAnimation.setRepeatMode(Animation.REVERSE);
         rAnimation.setRepeatCount(Integer.MAX_VALUE);
 
-        TranslateAnimation tAnimation1 = new TranslateAnimation(-100f, 300f, -400f, -400f);
-        tAnimation1.setDuration(8000);
+        tAnimation1.setDuration(6000);
         tAnimation1.setRepeatMode(Animation.REVERSE);
         tAnimation1.setRepeatCount(Integer.MAX_VALUE);
 
-        TranslateAnimation tAnimation2 = new TranslateAnimation(200f, -300f, -200f, -300f);
-        tAnimation2.setDuration(10000);
+        tAnimation2.setDuration(6000);
         tAnimation2.setRepeatMode(Animation.REVERSE);
         tAnimation2.setRepeatCount(Integer.MAX_VALUE);
 
@@ -378,7 +439,8 @@ public class WeatherActivity extends AppCompatActivity {
                 moveView1.setImageResource(R.drawable.light);
                 moveView1.setAnimation(rAnimation);
                 moveView1.startAnimation(rAnimation);
-                moveView2.setVisibility(View.INVISIBLE);
+                //clearAnimation() 结束动画
+                moveView2.clearAnimation();
                 break;
             case 1 :
                 Glide.with(this).load(R.drawable.cloudy).into(backgroundView);
@@ -398,11 +460,15 @@ public class WeatherActivity extends AppCompatActivity {
                 Glide.with(this).load(R.drawable.bg_heavy_rain_night).into(backgroundView);
                 rainView.setVisibility(View.VISIBLE);
                 snowView.setVisibility(View.INVISIBLE);
+                moveView1.clearAnimation();
+                moveView2.clearAnimation();
                 break;
             case 4 :
                 Glide.with(this).load(R.drawable.bg_heavy_rain_night).into(backgroundView);
                 snowView.setVisibility(View.VISIBLE);
                 rainView.setVisibility(View.INVISIBLE);
+                moveView1.clearAnimation();
+                moveView2.clearAnimation();
                 break;
             default:
                 loadBingPic();

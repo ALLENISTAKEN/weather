@@ -85,6 +85,8 @@ public class Utility {
                     county.setCountyName(countyObject.getString("name"));
                     county.setWeatherId(countyObject.getString("weather_id"));
                     county.setCityId(cityId);
+                    //没有加入我的城市列表
+//                    county.setAdded(false);
                     county.save();
                 }
                 return true;
